@@ -2,11 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens de color del design system. Valores en RGB para poder usar opacidad. */
 @layer base {
+  :root {
+    --bg: 247 247 250;
+    --sidebar: 255 255 255;
+    --surface: 255 255 255;
+    --surface-2: 244 243 248;
+    --line: 229 227 237;
+    --ink: 24 22 33;
+    --muted: 110 108 125;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg: 10 10 11;
+    --sidebar: 18 18 19;
+    --surface: 21 21 22;
+    --surface-2: 28 28 30;
+    --line: 42 42 45;
+    --ink: 245 245 247;
+    --muted: 150 150 160;
+    color-scheme: dark;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
   }
+
   body {
-    @apply bg-slate-50 font-sans text-slate-800;
+    @apply bg-bg font-sans text-ink;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-line;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 }

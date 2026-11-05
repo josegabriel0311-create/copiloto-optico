@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`
+
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
@@ -7,6 +10,14 @@ export default {
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       colors: {
+        // Superficies (cambian con el tema claro/oscuro, ver src/index.css)
+        bg: v('bg'),
+        sidebar: v('sidebar'),
+        surface: v('surface'),
+        surface2: v('surface-2'),
+        line: v('line'),
+        ink: v('ink'),
+        muted: v('muted'),
         // Marca: Roxo Noite (violeta del logo)
         brand: {
           50: '#F5F3FF',
@@ -20,22 +31,10 @@ export default {
           800: '#5B21B6',
           900: '#4C1D95',
         },
-        // Fondo oscuro de la barra lateral
-        noite: {
-          DEFAULT: '#1C1730',
-          light: '#2A2345',
-        },
-        success: { 50: '#ECFDF5', 500: '#10B981', 700: '#047857' },
-        warning: { 50: '#FFFBEB', 500: '#F59E0B', 700: '#B45309' },
-        danger: { 50: '#FEF2F2', 500: '#EF4444', 700: '#B91C1C' },
-        info: { 50: '#EFF6FF', 500: '#3B82F6', 700: '#1D4ED8' },
       },
       borderRadius: {
-        xl: '0.875rem',
-        '2xl': '1.25rem',
-      },
-      boxShadow: {
-        card: '0 1px 2px rgba(28, 23, 48, 0.04), 0 4px 16px rgba(28, 23, 48, 0.06)',
+        xl: '0.75rem',
+        '2xl': '1rem',
       },
     },
   },

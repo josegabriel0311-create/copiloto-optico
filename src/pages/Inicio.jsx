@@ -1,57 +1,54 @@
 import { Link } from 'react-router-dom'
-import { Store, Eye, Wrench, Users, ClipboardList, Clock, ArrowRight } from 'lucide-react'
-import { PageHeader, StatCard, Card } from '../components/ui/index.jsx'
-
-const modulos = [
-  {
-    to: '/mostrador',
-    icon: Store,
-    title: 'Mostrador',
-    description: 'Atención al cliente, ventas y seguimiento de pedidos.',
-  },
-  {
-    to: '/gabinete',
-    icon: Eye,
-    title: 'Gabinete',
-    description: 'Exámenes visuales, historias clínicas y fórmulas.',
-  },
-  {
-    to: '/taller',
-    icon: Wrench,
-    title: 'Taller',
-    description: 'Órdenes de trabajo, montaje y control de calidad.',
-  },
-]
+import { Plus, ClipboardList, Hourglass, PackageCheck } from 'lucide-react'
+import { Button, Card, StatCard, EmptyState } from '../components/ui/index.jsx'
+import EstadoBadge from '../components/EstadoBadge.jsx'
+import { useStore } from '../lib/store.jsx'
+import { esHoy, haceCuanto } from '../lib/utils.js'
 
 export default function Inicio() {
+  const { formulas } = useStore()
+  const deHoy = formulas.filter((f) => esHoy(f.creada)).length
+  const enTaller = formulas.filter((f) => f.estado === 'taller').length
+  const listas = formulas.filter((f) => f.estado === 'lista')
+
+  // Fecha en que quedó lista (último cambio de estado)
+  const desde = (f) => f.historial[f.historial.length - 1]?.fecha ?? f.creada
+
   return (
     <>
-      <PageHeader title="Hola 👋" description="Este es el resumen de tu óptica hoy." />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Clientes atendidos hoy" value="0" icon={Users} />
-        <StatCard label="Exámenes del día" value="0" icon={Eye} />
-        <StatCard label="Órdenes en taller" value="0" icon={ClipboardList} />
-        <StatCard label="Listas para entregar" value="0" icon={Clock} />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">Resumen de hoy</h1>
+        <Link to="/nueva-formula">
+          <Button size="lg" icon={Plus}>
+            Nueva fórmula
+          </Button>
+        </Link>
       </div>
 
-      <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Módulos</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        {modulos.map(({ to, icon: Icon, title, description }) => (
-          <Link key={to} to={to} className="group">
-            <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:border-brand-200">
-              <div className="mb-4 inline-flex rounded-xl bg-brand-50 p-3 text-brand-600">
-                <Icon className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-slate-900">{title}</h3>
-              <p className="mt-1 text-sm text-slate-500">{description}</p>
-              <p className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-600">
-                Abrir <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </p>
-            </Card>
-          </Link>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Fórmulas de hoy" value={deHoy} icon={ClipboardList} tone="violet" />
+        <StatCard label="En taller" value={enTaller} icon={Hourglass} tone="amber" />
+        <StatCard label="Listas para entrega" value={listas.length} icon={PackageCheck} tone="green" />
       </div>
+
+      <Card className="mt-6">
+        <h2 className="mb-2 font-bold">Listas para entregar</h2>
+        {listas.length === 0 ? (
+          <EmptyState icon={PackageCheck} title="Nada pendiente por entregar" description="Cuando el taller termine una fórmula aparecerá aquí." />
+        ) : (
+          <ul className="divide-y divide-line">
+            {listas.map((f) => (
+              <li key={f.id} className="flex items-center justify-between gap-3 py-3.5">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{f.paciente}</p>
+                  <p className="text-xs text-muted">{haceCuanto(desde(f))}</p>
+                </div>
+                <EstadoBadge estado={f.estado} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </>
   )
 }

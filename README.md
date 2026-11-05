@@ -1,13 +1,13 @@
 # Copiloto Óptico
 
-Micro-SaaS para ópticas: mostrador, gabinete y taller.
+Micro-SaaS para ópticas: fórmulas, taller, citas, inventario, mermas y reportes.
 
 ## Stack
 
 - React 18 + Vite
-- Tailwind CSS (design system en `tailwind.config.js` y `src/components/ui`)
+- Tailwind CSS con tema oscuro/claro (tokens en `src/index.css` y `tailwind.config.js`)
 - React Router
-- Próximamente: Supabase (base de datos y login)
+- Datos: por ahora en el navegador (`src/lib/store.jsx`, con datos de ejemplo). Próximamente Supabase.
 
 ## Correr en local
 
@@ -20,10 +20,14 @@ npm run dev
 
 Conectado a Vercel: cada cambio en `main` se publica solo.
 
+## Pantallas
+
+Inicio · Nueva fórmula · Taller (tablero por estados) · Citas · Inventario · Mermas · Analíticas · Avisos · Suscripción · Ajustes
+
 ## Etapas
 
-1. ✅ Design system y layout
+1. ✅ Design system, layout y pantallas (datos de ejemplo en el navegador)
 2. Login y cuentas por óptica (Supabase)
-3. Mostrador
-4. Gabinete
-5. Taller
+3. Pasar los datos a Supabase (fórmulas, inventario, mermas, citas)
+4. Roles de usuario (recepción, optómetra, taller)
+5. Suscripciones y pagos

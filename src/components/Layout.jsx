@@ -1,97 +1,151 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Store, Eye, Wrench, Settings, Palette, Menu, X, Bell, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
+import {
+  LayoutGrid,
+  Glasses,
+  SquareKanban,
+  CalendarDays,
+  Scan,
+  TriangleAlert,
+  BarChart3,
+  Bell,
+  CreditCard,
+  Settings,
+  PanelLeft,
+  Sun,
+  Moon,
+  ChevronDown,
+  X,
+  RotateCcw,
+} from 'lucide-react'
+import Logo from './Logo.jsx'
+import { useTheme } from '../lib/theme.js'
+import { useStore } from '../lib/store.jsx'
+import { cx } from '../lib/utils.js'
 
-const nav = [
-  { to: '/', label: 'Inicio', icon: LayoutDashboard, end: true },
-  { to: '/mostrador', label: 'Mostrador', icon: Store },
-  { to: '/gabinete', label: 'Gabinete', icon: Eye },
-  { to: '/taller', label: 'Taller', icon: Wrench },
+export const NAV = [
+  { to: '/', label: 'Inicio', icon: LayoutGrid, end: true },
+  { to: '/nueva-formula', label: 'Nueva fórmula', icon: Glasses },
+  { to: '/taller', label: 'Taller', icon: SquareKanban },
+  { to: '/citas', label: 'Citas', icon: CalendarDays },
+  { to: '/inventario', label: 'Inventario', icon: Scan },
+  { to: '/mermas', label: 'Mermas', icon: TriangleAlert },
+  { to: '/analiticas', label: 'Analíticas', icon: BarChart3 },
+  { to: '/avisos', label: 'Avisos', icon: Bell },
+  { to: '/suscripcion', label: 'Suscripción', icon: CreditCard },
+  { to: '/ajustes', label: 'Ajustes', icon: Settings },
 ]
 
-const navSecondary = [
-  { to: '/configuracion', label: 'Configuración', icon: Settings },
-  { to: '/design-system', label: 'Design system', icon: Palette },
-]
-
-function Logo() {
+function Sidebar({ collapsed, onNavigate }) {
   return (
-    <div className="flex items-center gap-2.5 px-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500">
-        <svg viewBox="0 0 32 32" className="h-6 w-6" aria-hidden="true">
-          <circle cx="11" cy="16" r="5" fill="none" stroke="#fff" strokeWidth="2.5" />
-          <circle cx="21" cy="16" r="5" fill="none" stroke="#fff" strokeWidth="2.5" />
-        </svg>
+    <div className="flex h-full flex-col border-r border-line bg-sidebar">
+      <div className={cx('flex h-16 shrink-0 items-center border-b border-line', collapsed ? 'justify-center' : 'px-5')}>
+        <Logo compact={collapsed} />
       </div>
-      <div className="leading-tight">
-        <p className="text-sm font-bold text-white">Copiloto</p>
-        <p className="text-xs font-medium text-brand-300">Óptico</p>
-      </div>
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        {NAV.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            onClick={onNavigate}
+            title={collapsed ? label : undefined}
+            className={({ isActive }) =>
+              cx(
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+                collapsed && 'justify-center px-0',
+                isActive ? 'bg-brand-500/15 text-ink' : 'text-ink/80 hover:bg-surface2 hover:text-ink',
+              )
+            }
+          >
+            <Icon className="h-5 w-5 shrink-0" />
+            {!collapsed && label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   )
 }
 
-function NavItem({ item, onClick }) {
-  const Icon = item.icon
-  return (
-    <NavLink
-      to={item.to}
-      end={item.end}
-      onClick={onClick}
-      className={({ isActive }) =>
-        [
-          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-          isActive ? 'bg-brand-500 text-white shadow-sm' : 'text-slate-300 hover:bg-noite-light hover:text-white',
-        ].join(' ')
-      }
-    >
-      <Icon className="h-5 w-5" />
-      {item.label}
-    </NavLink>
-  )
-}
+function UserMenu() {
+  const { usuario, reiniciarDemo } = useStore()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
 
-function Sidebar({ onNavigate }) {
+  useEffect(() => {
+    const cerrar = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [])
+
+  const inicial = (usuario?.nombre ?? 'U').charAt(0).toUpperCase()
+
   return (
-    <div className="flex h-full flex-col bg-noite px-3 py-5">
-      <Logo />
-      <nav className="mt-8 flex flex-1 flex-col gap-1">
-        <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Módulos</p>
-        {nav.map((item) => (
-          <NavItem key={item.to} item={item} onClick={onNavigate} />
-        ))}
-      </nav>
-      <div className="flex flex-col gap-1 border-t border-noite-light pt-4">
-        {navSecondary.map((item) => (
-          <NavItem key={item.to} item={item} onClick={onNavigate} />
-        ))}
-      </div>
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-surface2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-sm font-bold text-brand-500 dark:text-brand-300">
+          {inicial}
+        </span>
+        <span className="hidden text-sm font-semibold sm:block">{usuario?.nombre}</span>
+        <ChevronDown className="h-4 w-4 text-muted" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-line bg-surface p-2 shadow-xl">
+          <div className="px-3 py-2">
+            <p className="text-sm font-semibold">{usuario?.nombre}</p>
+            <p className="text-xs text-muted">{usuario?.rol}</p>
+          </div>
+          <div className="my-1 border-t border-line" />
+          <Link
+            to="/ajustes"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-surface2"
+          >
+            <Settings className="h-4 w-4" /> Ajustes
+          </Link>
+          <button
+            onClick={() => {
+              if (confirm('¿Restaurar los datos de ejemplo? Se borran los cambios de esta demo.')) reiniciarDemo()
+              setOpen(false)
+            }}
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-surface2"
+          >
+            <RotateCcw className="h-4 w-4" /> Restaurar datos de ejemplo
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function Layout() {
-  const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const { dark, toggle } = useTheme()
   const { pathname } = useLocation()
-  const current = [...nav, ...navSecondary].find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))
+  const actual = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
 
   return (
     <div className="min-h-screen">
       {/* Barra lateral escritorio */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 lg:block">
-        <Sidebar />
+      <aside className={cx('fixed inset-y-0 left-0 z-30 hidden transition-[width] lg:block', collapsed ? 'w-[76px]' : 'w-64')}>
+        <Sidebar collapsed={collapsed} />
       </aside>
 
       {/* Barra lateral móvil */}
-      {open && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-noite/60" onClick={() => setOpen(false)} />
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-64">
-            <Sidebar onNavigate={() => setOpen(false)} />
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
           </aside>
           <button
-            onClick={() => setOpen(false)}
-            className="absolute left-[17rem] top-4 rounded-xl bg-white p-2 text-slate-700"
+            onClick={() => setMobileOpen(false)}
+            className="absolute left-[16.75rem] top-4 rounded-xl bg-surface p-2"
             aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
@@ -99,38 +153,33 @@ export default function Layout() {
         </div>
       )}
 
-      <div className="lg:pl-64">
-        {/* Barra superior */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-100 bg-white/90 px-4 backdrop-blur sm:px-6">
+      <div className={cx('transition-[padding]', collapsed ? 'lg:pl-[76px]' : 'lg:pl-64')}>
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-bg/90 px-4 backdrop-blur sm:px-6">
           <button
-            onClick={() => setOpen(true)}
-            className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
-            aria-label="Abrir menú"
+            onClick={() => (window.innerWidth >= 1024 ? setCollapsed((c) => !c) : setMobileOpen(true))}
+            className="rounded-lg p-2 text-muted hover:bg-surface2 hover:text-ink"
+            aria-label="Mostrar u ocultar menú"
           >
-            <Menu className="h-5 w-5" />
+            <PanelLeft className="h-5 w-5" />
           </button>
-          <p className="font-semibold text-slate-900 lg:hidden">{current?.label ?? 'Copiloto Óptico'}</p>
+          <h2 className="font-bold">{actual?.label ?? 'Copiloto Óptico'}</h2>
 
-          <div className="relative hidden max-w-md flex-1 md:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              placeholder="Buscar cliente, orden o producto…"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <button className="relative rounded-xl p-2 text-slate-600 hover:bg-slate-100" aria-label="Notificaciones">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <Link to="/avisos" className="rounded-lg p-2 text-muted hover:bg-surface2 hover:text-ink" aria-label="Avisos">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500" />
+            </Link>
+            <button
+              onClick={toggle}
+              className="rounded-lg p-2 text-muted hover:bg-surface2 hover:text-ink"
+              aria-label={dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+            >
+              {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-              JG
-            </div>
+            <UserMenu />
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
           <Outlet />
         </main>
       </div>
