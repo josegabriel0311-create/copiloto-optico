@@ -7,7 +7,7 @@ Micro-SaaS para ópticas: fórmulas, taller, citas, inventario, mermas y reporte
 - React 18 + Vite
 - Tailwind CSS con tema oscuro/claro (tokens en `src/index.css` y `tailwind.config.js`)
 - React Router
-- Datos: por ahora en el navegador (`src/lib/store.jsx`, con datos de ejemplo). Próximamente Supabase.
+- Supabase: login y base de datos. Esquema en `supabase/schema.sql` (pegar en el SQL Editor de Supabase).
 
 ## Correr en local
 
@@ -26,8 +26,8 @@ Inicio · Nueva fórmula · Taller (tablero por estados) · Citas · Inventario 
 
 ## Etapas
 
-1. ✅ Design system, layout y pantallas (datos de ejemplo en el navegador)
-2. Login y cuentas por óptica (Supabase)
-3. Pasar los datos a Supabase (fórmulas, inventario, mermas, citas)
+1. ✅ Design system, layout y pantallas
+2. ✅ Login y cuentas por óptica (Supabase)
+3. ✅ Datos en Supabase (fórmulas, historial, inventario, mermas, citas)
 4. Roles de usuario (recepción, optómetra, taller)
 5. Suscripciones y pagos

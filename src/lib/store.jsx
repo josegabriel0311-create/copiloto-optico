@@ -1,8 +1,9 @@
-// Estado de la app (versión demo, guardada en el navegador).
-// En la etapa de Supabase este archivo se reemplaza por llamadas a la base de datos,
-// manteniendo las mismas funciones para que las pantallas no cambien.
+// Datos de la óptica, guardados en Supabase.
+// Las pantallas usan useStore() y no necesitan saber cómo se guardan los datos.
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { supabase } from './supabase.js'
+import { useAuth } from './auth.jsx'
 
 export const ESTADOS = [
   { id: 'recibida', label: 'Recibida', tone: 'blue' },
@@ -18,150 +19,191 @@ export const siguienteEstado = (id) => {
   return i >= 0 && i < ESTADOS.length - 1 ? ESTADOS[i + 1] : null
 }
 
-const STORAGE_KEY = 'copiloto-optico-demo-v1'
-const DIA = 24 * 60 * 60 * 1000
-const uid = () => Math.random().toString(36).slice(2, 10)
-const haceDias = (d) => new Date(Date.now() - d * DIA).toISOString()
+// --- Conversión entre la base de datos (snake_case) y la app ---
+const aFormula = (r, historial = []) => ({
+  id: r.id,
+  paciente: r.paciente,
+  telefono: r.telefono ?? '',
+  estado: r.estado,
+  od: r.od ?? {},
+  oi: r.oi ?? {},
+  tipoLente: r.tipo_lente ?? '',
+  montura: r.montura ?? '',
+  notas: r.notas ?? '',
+  creada: r.creada,
+  historial,
+})
+const aHistorial = (h) => ({ estado: h.estado, fecha: h.fecha, usuario: h.usuario })
 
-function semilla() {
-  const usuario = 'Recepción'
-  const ojo = { esfera: '-1.25', cilindro: '-0.50', eje: '90', adicion: '', dp: '31' }
-  const crear = (paciente, telefono, estado, dias) => {
-    const creada = haceDias(dias)
-    const historial = []
-    for (const e of ESTADOS) {
-      historial.push({ estado: e.id, fecha: creada, usuario })
-      if (e.id === estado) break
-    }
-    return {
-      id: uid(),
-      paciente,
-      telefono,
-      creada,
-      estado,
-      od: { ...ojo },
-      oi: { ...ojo, eje: '85' },
-      tipoLente: 'Monofocal',
-      montura: '',
-      notas: '',
-      historial,
-    }
-  }
-
-  return {
-    optica: { nombre: 'Mi óptica', nit: '', telefono: '', ciudad: '' },
-    usuario: { nombre: 'josegabriel0311', rol: 'Administrador' },
-    formulas: [
-      crear('Sofía Restrepo', '300 111 2233', 'recibida', 1),
-      crear('Camila Torres', '301 222 3344', 'recibida', 2),
-      crear('Jorge Iván Mejía', '302 333 4455', 'gabinete', 3),
-      crear('Valentina Suárez', '310 444 5566', 'gabinete', 4),
-      crear('Ana María Cárdenas', '311 555 6677', 'taller', 6),
-      crear('Patricia Ríos', '312 666 7788', 'taller', 6),
-      crear('Carlos Andrés Pérez', '313 777 8899', 'taller', 7),
-      crear('Luisa Gómez', '314 888 9900', 'lista', 7),
-      crear('Néstor Acosta', '315 999 0011', 'lista', 7),
-      crear('María Fernanda Rojas', '316 000 1122', 'lista', 8),
-      crear('Andrés Felipe Gil', '317 123 4567', 'entregada', 20),
-      crear('Daniela Ospina', '318 234 5678', 'entregada', 40),
-    ],
-    inventario: [
-      { id: uid(), codigo: 'MT-1001', marca: 'Ray-Ban', modelo: 'RB5154', color: 'Negro', cantidad: 4, costo: 180000 },
-      { id: uid(), codigo: 'MT-1002', marca: 'Oakley', modelo: 'OX8156', color: 'Gris', cantidad: 3, costo: 210000 },
-      { id: uid(), codigo: 'MT-1003', marca: 'Carrera', modelo: 'CA8824', color: 'Azul', cantidad: 2, costo: 160000 },
-      { id: uid(), codigo: 'MT-1004', marca: 'Guess', modelo: 'GU50125', color: 'Vino', cantidad: 1, costo: 150000 },
-      { id: uid(), codigo: 'MT-1005', marca: 'Kids Vision', modelo: 'KV-310', color: 'Turquesa', cantidad: 12, costo: 45000 },
-      { id: uid(), codigo: 'MT-1006', marca: 'Vogue', modelo: 'VO5286', color: 'Carey', cantidad: 5, costo: 140000 },
-    ],
-    mermas: [],
-    citas: [],
-  }
-}
-
-function cargar() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch (e) {
-    // sin acceso al almacenamiento: se usan los datos de ejemplo
-  }
-  return semilla()
-}
+const vacio = { optica: null, formulas: [], inventario: [], mermas: [], citas: [] }
 
 const StoreContext = createContext(null)
 
 export function StoreProvider({ children }) {
-  const [data, setData] = useState(cargar)
+  const { membresia, user } = useAuth()
+  const opticaId = membresia?.optica_id
+  const [data, setData] = useState(vacio)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+
+  const usuario = useMemo(
+    () => ({ nombre: membresia?.nombre || user?.email || 'Usuario', rol: membresia?.rol === 'admin' ? 'Administrador' : membresia?.rol ?? '' }),
+    [membresia, user],
+  )
+
+  const fallo = useCallback((e, mensaje) => {
+    if (!e) return false
+    console.error(mensaje, e)
+    setError(`${mensaje}. ${e.message ?? ''}`.trim())
+    return true
+  }, [])
+
+  const cargar = useCallback(async () => {
+    if (!opticaId) return
+    setCargando(true)
+    const [o, f, h, i, m, c] = await Promise.all([
+      supabase.from('opticas').select('*').eq('id', opticaId).single(),
+      supabase.from('formulas').select('*').eq('optica_id', opticaId).order('creada', { ascending: false }),
+      supabase.from('formula_historial').select('formula_id, estado, fecha, usuario').eq('optica_id', opticaId).order('fecha', { ascending: true }),
+      supabase.from('inventario').select('*').eq('optica_id', opticaId).order('marca'),
+      supabase.from('mermas').select('*').eq('optica_id', opticaId).order('fecha', { ascending: false }),
+      supabase.from('citas').select('*').eq('optica_id', opticaId).order('fecha'),
+    ])
+    const primerError = [o, f, h, i, m, c].find((r) => r.error)?.error
+    if (fallo(primerError, 'No se pudieron cargar los datos')) {
+      setCargando(false)
+      return
+    }
+    const porFormula = {}
+    for (const x of h.data) (porFormula[x.formula_id] ||= []).push(aHistorial(x))
+    setData({
+      optica: o.data,
+      formulas: f.data.map((r) => aFormula(r, porFormula[r.id] ?? [])),
+      inventario: i.data,
+      mermas: m.data,
+      citas: c.data,
+    })
+    setCargando(false)
+  }, [opticaId, fallo])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (e) {
-      // ignorar
-    }
-  }, [data])
+    cargar()
+  }, [cargar])
 
-  const acciones = useMemo(() => {
-    const quien = () => data.usuario?.nombre ?? 'Usuario'
-    return {
-      crearFormula(campos) {
-        const ahora = new Date().toISOString()
-        const nueva = {
-          id: uid(),
-          creada: ahora,
-          estado: 'recibida',
-          historial: [{ estado: 'recibida', fecha: ahora, usuario: quien() }],
-          ...campos,
-        }
+  const acciones = useMemo(
+    () => ({
+      async crearFormula(campos) {
+        const { data: r, error: e } = await supabase
+          .from('formulas')
+          .insert({
+            optica_id: opticaId,
+            paciente: campos.paciente,
+            telefono: campos.telefono,
+            od: campos.od,
+            oi: campos.oi,
+            tipo_lente: campos.tipoLente,
+            montura: campos.montura,
+            notas: campos.notas,
+          })
+          .select()
+          .single()
+        if (fallo(e, 'No se pudo guardar la fórmula')) return null
+        const { data: hr } = await supabase
+          .from('formula_historial')
+          .insert({ formula_id: r.id, optica_id: opticaId, estado: 'recibida', usuario: usuario.nombre })
+          .select('estado, fecha, usuario')
+          .single()
+        const nueva = aFormula(r, hr ? [aHistorial(hr)] : [])
         setData((d) => ({ ...d, formulas: [nueva, ...d.formulas] }))
         return nueva
       },
-      avanzarFormula(id) {
+
+      async avanzarFormula(id) {
+        const f = data.formulas.find((x) => x.id === id)
+        const sig = f && siguienteEstado(f.estado)
+        if (!sig) return
+        const { error: e } = await supabase.from('formulas').update({ estado: sig.id }).eq('id', id)
+        if (fallo(e, 'No se pudo cambiar el estado')) return
+        const { data: hr } = await supabase
+          .from('formula_historial')
+          .insert({ formula_id: id, optica_id: opticaId, estado: sig.id, usuario: usuario.nombre })
+          .select('estado, fecha, usuario')
+          .single()
+        const paso = hr ? aHistorial(hr) : { estado: sig.id, fecha: new Date().toISOString(), usuario: usuario.nombre }
         setData((d) => ({
           ...d,
-          formulas: d.formulas.map((f) => {
-            if (f.id !== id) return f
-            const sig = siguienteEstado(f.estado)
-            if (!sig) return f
-            return {
-              ...f,
-              estado: sig.id,
-              historial: [...f.historial, { estado: sig.id, fecha: new Date().toISOString(), usuario: quien() }],
-            }
-          }),
+          formulas: d.formulas.map((x) => (x.id === id ? { ...x, estado: sig.id, historial: [...x.historial, paso] } : x)),
         }))
       },
-      ajustarStock(id, delta) {
-        setData((d) => ({
-          ...d,
-          inventario: d.inventario.map((m) => (m.id === id ? { ...m, cantidad: Math.max(0, m.cantidad + delta) } : m)),
-        }))
+
+      async ajustarStock(id, delta) {
+        // Cambio inmediato en pantalla; se corrige con el valor real que devuelve la base de datos
+        setData((d) => ({ ...d, inventario: d.inventario.map((m) => (m.id === id ? { ...m, cantidad: Math.max(0, m.cantidad + delta) } : m)) }))
+        const { data: cantidad, error: e } = await supabase.rpc('ajustar_stock', { p_id: id, p_delta: delta })
+        if (fallo(e, 'No se pudo actualizar el inventario')) return cargar()
+        if (typeof cantidad === 'number') {
+          setData((d) => ({ ...d, inventario: d.inventario.map((m) => (m.id === id ? { ...m, cantidad } : m)) }))
+        }
       },
-      agregarMontura(campos) {
-        setData((d) => ({ ...d, inventario: [...d.inventario, { id: uid(), cantidad: 0, costo: 0, ...campos }] }))
+
+      async agregarMontura(campos) {
+        const { data: r, error: e } = await supabase
+          .from('inventario')
+          .insert({ optica_id: opticaId, ...campos })
+          .select()
+          .single()
+        if (fallo(e, 'No se pudo agregar la montura')) return
+        setData((d) => ({ ...d, inventario: [...d.inventario, r] }))
       },
-      registrarMerma(campos) {
-        setData((d) => ({
-          ...d,
-          mermas: [{ id: uid(), creada: new Date().toISOString(), usuario: quien(), ...campos }, ...d.mermas],
-        }))
+
+      async registrarMerma(campos) {
+        const { data: r, error: e } = await supabase
+          .from('mermas')
+          .insert({ optica_id: opticaId, usuario: usuario.nombre, ...campos })
+          .select()
+          .single()
+        if (fallo(e, 'No se pudo registrar la merma')) return
+        setData((d) => ({ ...d, mermas: [r, ...d.mermas] }))
       },
-      crearCita(campos) {
-        setData((d) => ({ ...d, citas: [...d.citas, { id: uid(), ...campos }] }))
+
+      async crearCita(campos) {
+        const { data: r, error: e } = await supabase
+          .from('citas')
+          .insert({ optica_id: opticaId, ...campos })
+          .select()
+          .single()
+        if (fallo(e, 'No se pudo agendar la cita')) return
+        setData((d) => ({ ...d, citas: [...d.citas, r] }))
       },
-      eliminarCita(id) {
+
+      async eliminarCita(id) {
+        const { error: e } = await supabase.from('citas').delete().eq('id', id)
+        if (fallo(e, 'No se pudo eliminar la cita')) return
         setData((d) => ({ ...d, citas: d.citas.filter((c) => c.id !== id) }))
       },
-      guardarOptica(campos) {
-        setData((d) => ({ ...d, optica: { ...d.optica, ...campos } }))
-      },
-      reiniciarDemo() {
-        setData(semilla())
-      },
-    }
-  }, [data.usuario])
 
-  return <StoreContext.Provider value={{ ...data, ...acciones }}>{children}</StoreContext.Provider>
+      async guardarOptica(campos) {
+        const { nombre, nit, telefono, ciudad } = campos
+        const { data: r, error: e } = await supabase
+          .from('opticas')
+          .update({ nombre, nit, telefono, ciudad })
+          .eq('id', opticaId)
+          .select()
+          .single()
+        if (fallo(e, 'No se pudieron guardar los datos de la óptica')) return false
+        setData((d) => ({ ...d, optica: r }))
+        return true
+      },
+
+      recargar: cargar,
+      limpiarError: () => setError(''),
+    }),
+    [opticaId, usuario, data.formulas, fallo, cargar],
+  )
+
+  return (
+    <StoreContext.Provider value={{ ...data, usuario, cargando, error, ...acciones }}>{children}</StoreContext.Provider>
+  )
 }
 
 export function useStore() {

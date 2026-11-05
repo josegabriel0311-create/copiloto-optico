@@ -38,12 +38,15 @@ export default function NuevaFormula() {
   const [tipoLente, setTipoLente] = useState(TIPOS[0])
   const [montura, setMontura] = useState('')
   const [notas, setNotas] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
-  const guardar = (e) => {
+  const guardar = async (e) => {
     e.preventDefault()
-    if (!paciente.trim()) return
-    crearFormula({ paciente: paciente.trim(), telefono, od, oi, tipoLente, montura, notas })
-    navigate('/taller')
+    if (!paciente.trim() || guardando) return
+    setGuardando(true)
+    const nueva = await crearFormula({ paciente: paciente.trim(), telefono, od, oi, tipoLente, montura, notas })
+    setGuardando(false)
+    if (nueva) navigate('/taller')
   }
 
   return (
@@ -83,8 +86,8 @@ export default function NuevaFormula() {
       </Card>
 
       <div className="flex justify-end">
-        <Button type="submit" size="lg" icon={Save} disabled={!paciente.trim()}>
-          Guardar y enviar a taller
+        <Button type="submit" size="lg" icon={Save} disabled={!paciente.trim() || guardando}>
+          {guardando ? 'Guardando…' : 'Guardar y enviar a taller'}
         </Button>
       </div>
     </form>

@@ -7,17 +7,16 @@ import { useTheme } from '../lib/theme.js'
 export default function Ajustes() {
   const { optica, guardarOptica } = useStore()
   const { dark, toggle } = useTheme()
-  const [form, setForm] = useState(optica)
+  const [form, setForm] = useState({ nombre: '', nit: '', telefono: '', ciudad: '', ...optica })
   const [guardado, setGuardado] = useState(false)
   const set = (k) => (e) => {
     setGuardado(false)
     setForm((f) => ({ ...f, [k]: e.target.value }))
   }
 
-  const guardar = (e) => {
+  const guardar = async (e) => {
     e.preventDefault()
-    guardarOptica(form)
-    setGuardado(true)
+    if (await guardarOptica(form)) setGuardado(true)
   }
 
   return (

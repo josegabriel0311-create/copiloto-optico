@@ -16,11 +16,13 @@ import {
   Moon,
   ChevronDown,
   X,
-  RotateCcw,
+  LogOut,
+  RefreshCw,
 } from 'lucide-react'
-import Logo from './Logo.jsx'
+import Logo, { LogoMark } from './Logo.jsx'
 import { useTheme } from '../lib/theme.js'
 import { useStore } from '../lib/store.jsx'
+import { useAuth } from '../lib/auth.jsx'
 import { cx } from '../lib/utils.js'
 
 export const NAV = [
@@ -68,7 +70,8 @@ function Sidebar({ collapsed, onNavigate }) {
 }
 
 function UserMenu() {
-  const { usuario, reiniciarDemo } = useStore()
+  const { usuario, optica } = useStore()
+  const { user, salir } = useAuth()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -93,7 +96,12 @@ function UserMenu() {
         <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-line bg-surface p-2 shadow-xl">
           <div className="px-3 py-2">
             <p className="text-sm font-semibold">{usuario?.nombre}</p>
-            <p className="text-xs text-muted">{usuario?.rol}</p>
+            <p className="truncate text-xs text-muted">{user?.email}</p>
+            {optica?.nombre && (
+              <p className="mt-1 truncate text-xs text-muted">
+                {optica.nombre} · {usuario?.rol}
+              </p>
+            )}
           </div>
           <div className="my-1 border-t border-line" />
           <Link
@@ -103,17 +111,33 @@ function UserMenu() {
           >
             <Settings className="h-4 w-4" /> Ajustes
           </Link>
-          <button
-            onClick={() => {
-              if (confirm('¿Restaurar los datos de ejemplo? Se borran los cambios de esta demo.')) reiniciarDemo()
-              setOpen(false)
-            }}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-surface2"
-          >
-            <RotateCcw className="h-4 w-4" /> Restaurar datos de ejemplo
+          <button onClick={salir} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-surface2">
+            <LogOut className="h-4 w-4" /> Cerrar sesión
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function ErrorBanner() {
+  const { error, limpiarError, recargar } = useStore()
+  if (!error) return null
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+      <p className="flex-1">{error}</p>
+      <button
+        onClick={() => {
+          limpiarError()
+          recargar()
+        }}
+        className="inline-flex items-center gap-1 font-semibold hover:underline"
+      >
+        <RefreshCw className="h-4 w-4" /> Reintentar
+      </button>
+      <button onClick={limpiarError} className="rounded-lg p-1 hover:bg-red-500/10" aria-label="Cerrar">
+        <X className="h-4 w-4" />
+      </button>
     </div>
   )
 }
@@ -124,6 +148,8 @@ export default function Layout() {
   const { dark, toggle } = useTheme()
   const { pathname } = useLocation()
   const actual = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))
+  const { cargando, optica } = useStore()
+  const primeraCarga = cargando && !optica
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -180,7 +206,14 @@ export default function Layout() {
         </header>
 
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
-          <Outlet />
+          <ErrorBanner />
+          {primeraCarga ? (
+            <div className="flex justify-center py-24">
+              <LogoMark className="h-10 w-10 animate-pulse" />
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>
