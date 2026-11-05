@@ -1,11 +1,3 @@
--- =====================================================================
--- Copiloto Óptico · Esquema de base de datos (Supabase)
--- Pegar completo en Supabase → SQL Editor → New query → Run
--- Se puede volver a ejecutar sin romper nada (usa "if not exists").
--- =====================================================================
-
--- ---------- Tablas ----------
-
 create table if not exists public.opticas (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
@@ -90,8 +82,6 @@ create index if not exists inventario_optica_idx on public.inventario (optica_id
 create index if not exists mermas_optica_idx on public.mermas (optica_id, fecha);
 create index if not exists citas_optica_idx on public.citas (optica_id, fecha);
 
--- ---------- Seguridad: cada óptica solo ve sus propios datos ----------
-
 create or replace function public.es_miembro(p_optica uuid)
 returns boolean
 language sql
@@ -137,9 +127,6 @@ begin
   end loop;
 end $$;
 
--- ---------- Funciones que llama la app ----------
-
--- Crea la óptica del usuario recién registrado y lo deja como administrador
 create or replace function public.crear_optica(p_nombre text, p_usuario text)
 returns uuid
 language plpgsql
@@ -158,7 +145,6 @@ begin
 end;
 $$;
 
--- Suma o resta unidades de una montura sin bajar de cero
 create or replace function public.ajustar_stock(p_id uuid, p_delta integer)
 returns integer
 language sql
