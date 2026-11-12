@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { SearchInput, Select } from '../components/ui/index.jsx'
 import { ESTADOS, siguienteEstado, useStore } from '../lib/store.jsx'
@@ -59,7 +60,13 @@ export default function Taller() {
                     const sig = siguienteEstado(f.estado)
                     return (
                       <article key={f.id} className="rounded-xl border border-line bg-bg/40 p-3">
-                        <p className="font-bold">{f.paciente}</p>
+                        {f.pacienteId ? (
+                          <Link to={`/pacientes/${f.pacienteId}`} className="font-bold hover:text-brand-500 hover:underline">
+                            {f.paciente}
+                          </Link>
+                        ) : (
+                          <p className="font-bold">{f.paciente}</p>
+                        )}
                         <p className="mt-0.5 text-xs text-muted">
                           {fechaCorta(f.creada)} · {f.tipoLente || '—'}
                         </p>

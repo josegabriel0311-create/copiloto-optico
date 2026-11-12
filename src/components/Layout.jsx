@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutGrid,
   Glasses,
+  Users,
   SquareKanban,
   CalendarDays,
   Scan,
@@ -28,6 +29,7 @@ import { cx } from '../lib/utils.js'
 export const NAV = [
   { to: '/', label: 'Inicio', icon: LayoutGrid, end: true },
   { to: '/nueva-formula', label: 'Nueva fórmula', icon: Glasses },
+  { to: '/pacientes', label: 'Pacientes', icon: Users },
   { to: '/taller', label: 'Taller', icon: SquareKanban },
   { to: '/citas', label: 'Citas', icon: CalendarDays },
   { to: '/inventario', label: 'Inventario', icon: Scan },

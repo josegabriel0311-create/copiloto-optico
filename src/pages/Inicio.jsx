@@ -40,7 +40,13 @@ export default function Inicio() {
             {listas.map((f) => (
               <li key={f.id} className="flex items-center justify-between gap-3 py-3.5">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{f.paciente}</p>
+                  {f.pacienteId ? (
+                    <Link to={`/pacientes/${f.pacienteId}`} className="block truncate font-semibold hover:text-brand-500 hover:underline">
+                      {f.paciente}
+                    </Link>
+                  ) : (
+                    <p className="truncate font-semibold">{f.paciente}</p>
+                  )}
                   <p className="text-xs text-muted">{haceCuanto(desde(f))}</p>
                 </div>
                 <EstadoBadge estado={f.estado} />

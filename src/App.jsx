@@ -7,6 +7,8 @@ import Login from './pages/Login.jsx'
 import CrearOptica from './pages/CrearOptica.jsx'
 import Inicio from './pages/Inicio.jsx'
 import NuevaFormula from './pages/NuevaFormula.jsx'
+import Pacientes from './pages/Pacientes.jsx'
+import PacienteDetalle from './pages/PacienteDetalle.jsx'
 import Taller from './pages/Taller.jsx'
 import Citas from './pages/Citas.jsx'
 import Inventario from './pages/Inventario.jsx'
@@ -37,6 +39,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Inicio />} />
           <Route path="nueva-formula" element={<NuevaFormula />} />
+          <Route path="pacientes" element={<Pacientes />} />
+          <Route path="pacientes/:id" element={<PacienteDetalle />} />
           <Route path="taller" element={<Taller />} />
           <Route path="citas" element={<Citas />} />
           <Route path="inventario" element={<Inventario />} />

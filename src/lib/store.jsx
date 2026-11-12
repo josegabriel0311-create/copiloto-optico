@@ -22,6 +22,7 @@ export const siguienteEstado = (id) => {
 // --- Conversión entre la base de datos (snake_case) y la app ---
 const aFormula = (r, historial = []) => ({
   id: r.id,
+  pacienteId: r.paciente_id ?? null,
   paciente: r.paciente,
   telefono: r.telefono ?? '',
   estado: r.estado,
@@ -35,7 +36,21 @@ const aFormula = (r, historial = []) => ({
 })
 const aHistorial = (h) => ({ estado: h.estado, fecha: h.fecha, usuario: h.usuario })
 
-const vacio = { optica: null, formulas: [], inventario: [], mermas: [], citas: [] }
+const vacio = { optica: null, pacientes: [], formulas: [], inventario: [], mermas: [], citas: [] }
+
+// La tabla de pacientes llega con una actualización de la base de datos (supabase/02_pacientes.sql)
+const faltaTabla = (e) => e && (e.code === '42P01' || e.code === 'PGRST205' || /pacientes/i.test(e.message ?? ''))
+const AVISO_PACIENTES =
+  'Falta actualizar la base de datos para usar Pacientes: ejecuta el archivo 02_pacientes.sql en el SQL Editor de Supabase.'
+
+const limpiarPaciente = (c) => ({
+  nombre: (c.nombre ?? '').trim(),
+  documento: (c.documento ?? '').trim(),
+  telefono: (c.telefono ?? '').trim(),
+  email: (c.email ?? '').trim(),
+  fecha_nacimiento: c.fecha_nacimiento || null,
+  notas: c.notas ?? '',
+})
 
 const StoreContext = createContext(null)
 
@@ -61,7 +76,8 @@ export function StoreProvider({ children }) {
   const cargar = useCallback(async () => {
     if (!opticaId) return
     setCargando(true)
-    const [o, f, h, i, m, c] = await Promise.all([
+    const [p, o, f, h, i, m, c] = await Promise.all([
+      supabase.from('pacientes').select('*').eq('optica_id', opticaId).order('nombre'),
       supabase.from('opticas').select('*').eq('id', opticaId).single(),
       supabase.from('formulas').select('*').eq('optica_id', opticaId).order('creada', { ascending: false }),
       supabase.from('formula_historial').select('formula_id, estado, fecha, usuario').eq('optica_id', opticaId).order('fecha', { ascending: true }),
@@ -76,8 +92,13 @@ export function StoreProvider({ children }) {
     }
     const porFormula = {}
     for (const x of h.data) (porFormula[x.formula_id] ||= []).push(aHistorial(x))
+    if (p.error) {
+      console.error('No se pudieron cargar los pacientes', p.error)
+      setError(faltaTabla(p.error) ? AVISO_PACIENTES : `No se pudieron cargar los pacientes. ${p.error.message ?? ''}`)
+    }
     setData({
       optica: o.data,
+      pacientes: p.data ?? [],
       formulas: f.data.map((r) => aFormula(r, porFormula[r.id] ?? [])),
       inventario: i.data,
       mermas: m.data,
@@ -92,13 +113,49 @@ export function StoreProvider({ children }) {
 
   const acciones = useMemo(
     () => ({
+      async crearPaciente(campos) {
+        const { data: r, error: e } = await supabase
+          .from('pacientes')
+          .insert({ optica_id: opticaId, ...limpiarPaciente(campos) })
+          .select()
+          .single()
+        if (e) {
+          if (faltaTabla(e)) setError(AVISO_PACIENTES)
+          else fallo(e, 'No se pudo guardar el paciente')
+          return null
+        }
+        setData((d) => ({ ...d, pacientes: [...d.pacientes, r].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')) }))
+        return r
+      },
+
+      async actualizarPaciente(id, campos) {
+        const limpio = limpiarPaciente(campos)
+        const { data: r, error: e } = await supabase.from('pacientes').update(limpio).eq('id', id).select().single()
+        if (fallo(e, 'No se pudieron guardar los datos del paciente')) return false
+        // Las fórmulas guardan una copia del nombre y teléfono para mostrarlos en el taller
+        await supabase.from('formulas').update({ paciente: r.nombre, telefono: r.telefono }).eq('paciente_id', id)
+        setData((d) => ({
+          ...d,
+          pacientes: d.pacientes.map((x) => (x.id === id ? r : x)),
+          formulas: d.formulas.map((f) => (f.pacienteId === id ? { ...f, paciente: r.nombre, telefono: r.telefono } : f)),
+        }))
+        return true
+      },
+
+      // campos.pacienteId: paciente existente. Si no viene, se crea el paciente con campos.nuevoPaciente.
       async crearFormula(campos) {
+        let pac = data.pacientes.find((x) => x.id === campos.pacienteId)
+        if (!pac) {
+          pac = await acciones.crearPaciente(campos.nuevoPaciente)
+          if (!pac) return null
+        }
         const { data: r, error: e } = await supabase
           .from('formulas')
           .insert({
             optica_id: opticaId,
-            paciente: campos.paciente,
-            telefono: campos.telefono,
+            paciente_id: pac.id,
+            paciente: pac.nombre,
+            telefono: pac.telefono,
             od: campos.od,
             oi: campos.oi,
             tipo_lente: campos.tipoLente,
@@ -198,7 +255,7 @@ export function StoreProvider({ children }) {
       recargar: cargar,
       limpiarError: () => setError(''),
     }),
-    [opticaId, usuario, data.formulas, fallo, cargar],
+    [opticaId, usuario, data.formulas, data.pacientes, fallo, cargar],
   )
 
   return (
