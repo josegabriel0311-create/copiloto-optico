@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, Link, Navigate } from 'react-router-dom'
 import {
   LayoutGrid,
   Glasses,
@@ -11,6 +11,7 @@ import {
   BarChart3,
   Bell,
   CreditCard,
+  Wallet,
   Settings,
   PanelLeft,
   Sun,
@@ -25,6 +26,7 @@ import { useTheme } from '../lib/theme.js'
 import { useStore } from '../lib/store.jsx'
 import { useAuth } from '../lib/auth.jsx'
 import { cx } from '../lib/utils.js'
+import { puede } from '../lib/permisos.js'
 
 export const NAV = [
   { to: '/', label: 'Inicio', icon: LayoutGrid, end: true },
@@ -32,6 +34,7 @@ export const NAV = [
   { to: '/pacientes', label: 'Pacientes', icon: Users },
   { to: '/taller', label: 'Taller', icon: SquareKanban },
   { to: '/citas', label: 'Citas', icon: CalendarDays },
+  { to: '/cobros', label: 'Cobros', icon: Wallet },
   { to: '/inventario', label: 'Inventario', icon: Scan },
   { to: '/mermas', label: 'Mermas', icon: TriangleAlert },
   { to: '/analiticas', label: 'Analíticas', icon: BarChart3 },
@@ -41,13 +44,15 @@ export const NAV = [
 ]
 
 function Sidebar({ collapsed, onNavigate }) {
+  const { usuario } = useStore()
+  const items = NAV.filter((n) => puede(usuario.rol, n.to))
   return (
     <div className="flex h-full flex-col border-r border-line bg-sidebar">
       <div className={cx('flex h-16 shrink-0 items-center border-b border-line', collapsed ? 'justify-center' : 'px-5')}>
         <Logo compact={collapsed} />
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+        {items.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -101,7 +106,7 @@ function UserMenu() {
             <p className="truncate text-xs text-muted">{user?.email}</p>
             {optica?.nombre && (
               <p className="mt-1 truncate text-xs text-muted">
-                {optica.nombre} · {usuario?.rol}
+                {optica.nombre} · {usuario?.rolNombre}
               </p>
             )}
           </div>
@@ -150,8 +155,9 @@ export default function Layout() {
   const { dark, toggle } = useTheme()
   const { pathname } = useLocation()
   const actual = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))
-  const { cargando, optica } = useStore()
+  const { cargando, optica, usuario } = useStore()
   const primeraCarga = cargando && !optica
+  const permitido = puede(usuario.rol, pathname)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -213,8 +219,10 @@ export default function Layout() {
             <div className="flex justify-center py-24">
               <LogoMark className="h-10 w-10 animate-pulse" />
             </div>
-          ) : (
+          ) : permitido ? (
             <Outlet />
+          ) : (
+            <Navigate to="/" replace />
           )}
         </main>
       </div>

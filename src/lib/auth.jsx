@@ -16,14 +16,21 @@ export function AuthProvider({ children }) {
       return
     }
     setMembresia(undefined)
-    const { data, error } = await supabase
-      .from('miembros')
-      .select('optica_id, nombre, rol')
-      .eq('user_id', userId)
-      .order('creado', { ascending: true })
-      .limit(1)
-      .maybeSingle()
+    const consultar = () =>
+      supabase
+        .from('miembros')
+        .select('optica_id, nombre, rol')
+        .eq('user_id', userId)
+        .order('creado', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+    let { data, error } = await consultar()
     if (error) console.error('No se pudo cargar la membresía', error)
+    // Sin óptica: si alguien lo invitó con este correo, se une a esa óptica
+    if (!data && !error) {
+      const { data: unida } = await supabase.rpc('aceptar_invitacion')
+      if (unida) ({ data } = await consultar())
+    }
     setMembresia(data ?? null)
   }, [])
 

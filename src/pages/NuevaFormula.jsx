@@ -3,8 +3,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Save, Search, X, Copy, UserPlus, Phone, IdCard, History } from 'lucide-react'
 import { Button, Card, Input, Select, Textarea } from '../components/ui/index.jsx'
 import { pacienteVacio, normalizar, edad } from '../components/FormPaciente.jsx'
-import { useStore } from '../lib/store.jsx'
-import { cx } from '../lib/utils.js'
+import { METODOS_PAGO, useStore } from '../lib/store.jsx'
+import { puedeCobrar } from '../lib/permisos.js'
+import { cx, pesos } from '../lib/utils.js'
 
 const ojoVacio = { esfera: '', cilindro: '', eje: '', adicion: '', dp: '' }
 const camposOjo = [
@@ -147,7 +148,13 @@ function SelectorPaciente({ pacientes, seleccionado, onSeleccionar, nuevo, onNue
 }
 
 export default function NuevaFormula() {
-  const { crearFormula, inventario, pacientes, formulas } = useStore()
+  const { crearFormula, inventario, pacientes, formulas, usuario } = useStore()
+  const cobra = puedeCobrar(usuario.rol)
+  const [precio, setPrecio] = useState('')
+  const [abono, setAbono] = useState('')
+  const [metodo, setMetodo] = useState(METODOS_PAGO[0])
+  const saldo = Math.max(0, (Number(precio) || 0) - (Number(abono) || 0))
+  const abonoExcede = Number(abono) > 0 && Number(precio) > 0 && Number(abono) > Number(precio)
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [pacienteId, setPacienteId] = useState(params.get('paciente'))
@@ -174,7 +181,7 @@ export default function NuevaFormula() {
 
   const guardar = async (e) => {
     e.preventDefault()
-    if (!listo || guardando) return
+    if (!listo || guardando || abonoExcede) return
     setGuardando(true)
     const creada = await crearFormula({
       pacienteId: seleccionado?.id,
@@ -184,6 +191,8 @@ export default function NuevaFormula() {
       tipoLente,
       montura,
       notas,
+      precio: cobra ? precio : 0,
+      abono: cobra ? { monto: abono, metodo } : null,
     })
     setGuardando(false)
     if (creada) navigate('/taller')
@@ -243,8 +252,32 @@ export default function NuevaFormula() {
         </div>
       </Card>
 
+      {cobra && (
+        <Card>
+          <h2 className="mb-4 font-bold">Cobro</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Input label="Precio total" type="number" min="0" step="any" inputMode="numeric" placeholder="350000" value={precio} onChange={(e) => setPrecio(e.target.value)} />
+            <Input label="Abono inicial" type="number" min="0" step="any" inputMode="numeric" placeholder="0" value={abono} onChange={(e) => setAbono(e.target.value)} />
+            <Select label="Método de pago" value={metodo} onChange={(e) => setMetodo(e.target.value)} disabled={!(Number(abono) > 0)}>
+              {METODOS_PAGO.map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </Select>
+          </div>
+          {abonoExcede ? (
+            <p className="mt-3 text-sm text-red-500">El abono no puede ser mayor que el precio.</p>
+          ) : (
+            Number(precio) > 0 && (
+              <p className="mt-3 text-sm text-muted">
+                Saldo pendiente al entregar: <span className={cx('font-bold', saldo > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')}>{pesos(saldo)}</span>
+              </p>
+            )
+          )}
+        </Card>
+      )}
+
       <div className="flex justify-end">
-        <Button type="submit" size="lg" icon={Save} disabled={!listo || guardando}>
+        <Button type="submit" size="lg" icon={Save} disabled={!listo || guardando || abonoExcede}>
           {guardando ? 'Guardando…' : 'Guardar y enviar a taller'}
         </Button>
       </div>

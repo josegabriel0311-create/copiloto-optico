@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { CalendarDays, Plus, Trash2 } from 'lucide-react'
 import { Button, Card, Input, Select, EmptyState } from '../components/ui/index.jsx'
+import BotonWhatsApp from '../components/BotonWhatsApp.jsx'
 import { useStore } from '../lib/store.jsx'
+import { mensajeCita } from '../lib/whatsapp.js'
 import { hoyISO } from '../lib/utils.js'
 
 const MOTIVOS = ['Examen visual', 'Entrega de gafas', 'Ajuste de montura', 'Control', 'Lentes de contacto']
@@ -10,7 +12,7 @@ const fechaLarga = (f) =>
   new Date(`${f}T00:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
 
 export default function Citas() {
-  const { citas, crearCita, eliminarCita } = useStore()
+  const { citas, crearCita, eliminarCita, optica } = useStore()
   const [form, setForm] = useState({ paciente: '', telefono: '', fecha: hoyISO(), hora: '09:00', motivo: MOTIVOS[0] })
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -72,6 +74,7 @@ export default function Citas() {
                           {c.telefono ? ` · ${c.telefono}` : ''}
                         </p>
                       </div>
+                      <BotonWhatsApp telefono={c.telefono} mensaje={mensajeCita({ cita: c, optica })} size="icon" title="Recordar la cita por WhatsApp" />
                       <button onClick={() => eliminarCita(c.id)} className="rounded-lg p-2 text-muted hover:bg-surface2 hover:text-red-500" aria-label="Eliminar cita">
                         <Trash2 className="h-4 w-4" />
                       </button>

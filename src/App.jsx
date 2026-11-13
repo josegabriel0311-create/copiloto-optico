@@ -11,6 +11,7 @@ import Pacientes from './pages/Pacientes.jsx'
 import PacienteDetalle from './pages/PacienteDetalle.jsx'
 import Taller from './pages/Taller.jsx'
 import Citas from './pages/Citas.jsx'
+import Cobros from './pages/Cobros.jsx'
 import Inventario from './pages/Inventario.jsx'
 import Mermas from './pages/Mermas.jsx'
 import Analiticas from './pages/Analiticas.jsx'
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="pacientes/:id" element={<PacienteDetalle />} />
           <Route path="taller" element={<Taller />} />
           <Route path="citas" element={<Citas />} />
+          <Route path="cobros" element={<Cobros />} />
           <Route path="inventario" element={<Inventario />} />
           <Route path="mermas" element={<Mermas />} />
           <Route path="analiticas" element={<Analiticas />} />

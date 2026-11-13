@@ -25,7 +25,7 @@ function Variacion({ actual, anterior, menosEsMejor = false }) {
 }
 
 export default function Analiticas() {
-  const { formulas, mermas, inventario } = useStore()
+  const { formulas, mermas, inventario, pagos } = useStore()
   const [mes, setMes] = useState(mesActual())
   const prev = mesAnterior(mes)
 
@@ -53,6 +53,7 @@ export default function Analiticas() {
     ], [
       { seccion: 'Resumen', fecha: mes, detalle: 'Fórmulas del mes', valor: fs.length },
       { seccion: 'Resumen', fecha: mes, detalle: 'Mermas del mes (unidades)', valor: mermasDe(mes) },
+      { seccion: 'Resumen', fecha: mes, detalle: 'Recaudado del mes', valor: pagos.filter((p) => claveMes(p.fecha) === mes).reduce((s, p) => s + p.monto, 0) },
       ...fs.map((f) => ({ seccion: 'Fórmula', fecha: f.creada.slice(0, 10), detalle: `${f.paciente} · ${f.tipoLente || ''}`, valor: estadoInfo(f.estado).label })),
       ...formulas.flatMap((f) =>
         f.historial
@@ -62,6 +63,9 @@ export default function Analiticas() {
       ...mermas
         .filter((m) => claveMes(`${m.fecha}T12:00:00`) === mes)
         .map((m) => ({ seccion: 'Merma', fecha: m.fecha, detalle: `${m.tipo} · ${m.referencia || ''} · ${m.motivo || ''}`, valor: m.cantidad })),
+      ...pagos
+        .filter((p) => claveMes(p.fecha) === mes)
+        .map((p) => ({ seccion: 'Pago', fecha: p.fecha.slice(0, 10), detalle: `${formulas.find((f) => f.id === p.formula_id)?.paciente ?? ''} · ${p.metodo}`, valor: p.monto })),
       ...inventario.map((m) => ({ seccion: 'Inventario', fecha: '', detalle: `${m.marca} ${m.modelo} (${m.codigo})`, valor: m.cantidad * (m.costo || 0) })),
     ])
   }
@@ -71,7 +75,7 @@ export default function Analiticas() {
       <Card>
         <h2 className="font-bold">Reportes para contabilidad</h2>
         <p className="mt-1 text-sm text-muted">
-          Elige un mes y descarga un Excel con el resumen, las fórmulas capturadas, el historial de cambios de estado, las mermas y el inventario de monturas valorado.
+          Elige un mes y descarga un Excel con el resumen, las fórmulas capturadas, el historial de cambios de estado, los pagos recibidos, las mermas y el inventario de monturas valorado.
         </p>
         <div className="mt-5 flex flex-wrap items-end gap-2">
           <Field label="Mes">

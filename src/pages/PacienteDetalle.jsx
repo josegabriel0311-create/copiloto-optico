@@ -5,7 +5,11 @@ import { Button, Card, EmptyState } from '../components/ui/index.jsx'
 import FormPaciente, { edad } from '../components/FormPaciente.jsx'
 import TablaFormula from '../components/TablaFormula.jsx'
 import EstadoBadge from '../components/EstadoBadge.jsx'
+import BotonWhatsApp from '../components/BotonWhatsApp.jsx'
+import { ResumenCobro } from '../components/Cobro.jsx'
 import { useStore } from '../lib/store.jsx'
+import { puedeCobrar } from '../lib/permisos.js'
+import { mensajeLista, mensajeSaludo } from '../lib/whatsapp.js'
 
 const fechaLarga = (iso) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -98,7 +102,8 @@ function DatosPaciente({ paciente }) {
 
 export default function PacienteDetalle() {
   const { id } = useParams()
-  const { pacientes, formulas } = useStore()
+  const { pacientes, formulas, optica, usuario, cuentas, marcarAvisado } = useStore()
+  const cobra = puedeCobrar(usuario.rol)
   const paciente = pacientes.find((p) => p.id === id)
   const historial = formulas.filter((f) => f.pacienteId === id).sort((a, b) => b.creada.localeCompare(a.creada))
 
@@ -138,11 +143,16 @@ export default function PacienteDetalle() {
             </p>
           </div>
         </div>
-        <Link to={`/nueva-formula?paciente=${paciente.id}`}>
-          <Button size="lg" icon={Plus}>
-            Nueva fórmula
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <BotonWhatsApp telefono={paciente.telefono} mensaje={mensajeSaludo({ paciente: paciente.nombre, optica })} size="md">
+            Escribir
+          </BotonWhatsApp>
+          <Link to={`/nueva-formula?paciente=${paciente.id}`}>
+            <Button size="lg" icon={Plus}>
+              Nueva fórmula
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[320px_1fr]">
@@ -172,6 +182,18 @@ export default function PacienteDetalle() {
                   </div>
                   <TablaFormula od={f.od} oi={f.oi} />
                   {f.notas && <p className="mt-3 whitespace-pre-line rounded-xl bg-surface2/60 px-3 py-2 text-sm text-muted">{f.notas}</p>}
+                  {f.estado === 'lista' && (
+                    <div className="mt-3">
+                      <BotonWhatsApp
+                        telefono={f.telefono || paciente.telefono}
+                        mensaje={mensajeLista({ paciente: paciente.nombre, optica, saldo: cuentas[f.id]?.saldo ?? 0 })}
+                        onEnviado={() => marcarAvisado(f.id)}
+                      >
+                        {f.avisadoEn ? 'Avisar de nuevo que está lista' : 'Avisar que está lista'}
+                      </BotonWhatsApp>
+                    </div>
+                  )}
+                  {cobra && <ResumenCobro formula={f} />}
                 </Card>
               ))}
             </div>

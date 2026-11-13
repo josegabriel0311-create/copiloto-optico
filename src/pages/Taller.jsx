@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, CheckCheck } from 'lucide-react'
 import { SearchInput, Select } from '../components/ui/index.jsx'
+import BotonWhatsApp from '../components/BotonWhatsApp.jsx'
+import { EtiquetaSaldo } from '../components/Cobro.jsx'
 import { ESTADOS, siguienteEstado, useStore } from '../lib/store.jsx'
-import { cx, fechaCorta } from '../lib/utils.js'
+import { puedeCobrar } from '../lib/permisos.js'
+import { mensajeLista } from '../lib/whatsapp.js'
+import { cx, fechaCorta, haceCuanto, pesos } from '../lib/utils.js'
 
 const contadorTono = {
   blue: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
@@ -14,7 +18,17 @@ const contadorTono = {
 }
 
 export default function Taller() {
-  const { formulas, avanzarFormula } = useStore()
+  const { formulas, avanzarFormula, marcarAvisado, cuentas, optica, usuario } = useStore()
+  const cobra = puedeCobrar(usuario.rol)
+
+  const avanzar = (f) => {
+    const saldo = cuentas[f.id]?.saldo ?? 0
+    if (f.estado === 'lista' && saldo > 0) {
+      const ok = confirm(`${f.paciente} tiene un saldo pendiente de ${pesos(saldo)}. ¿Entregar de todas formas?\n\nPuedes registrar el pago en Cobros o en la ficha del paciente.`)
+      if (!ok) return
+    }
+    avanzarFormula(f.id)
+  }
   const [q, setQ] = useState('')
   const [filtro, setFiltro] = useState('todos')
 
@@ -70,9 +84,26 @@ export default function Taller() {
                         <p className="mt-0.5 text-xs text-muted">
                           {fechaCorta(f.creada)} · {f.tipoLente || '—'}
                         </p>
+                        {cobra && <EtiquetaSaldo formulaId={f.id} className="mt-2" />}
+                        {f.estado === 'lista' && (
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <BotonWhatsApp
+                              telefono={f.telefono}
+                              mensaje={mensajeLista({ paciente: f.paciente, optica, saldo: cuentas[f.id]?.saldo ?? 0 })}
+                              onEnviado={() => marcarAvisado(f.id)}
+                            >
+                              {f.avisadoEn ? 'Avisar de nuevo' : 'Avisar por WhatsApp'}
+                            </BotonWhatsApp>
+                            {f.avisadoEn && (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                                <CheckCheck className="h-3.5 w-3.5 text-emerald-500" /> Avisado {haceCuanto(f.avisadoEn)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {sig && (
                           <button
-                            onClick={() => avanzarFormula(f.id)}
+                            onClick={() => avanzar(f)}
                             className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-surface2/60 px-3 py-2 text-left text-xs font-semibold hover:bg-surface2"
                           >
                             <span className="truncate">Avanzar a {sig.label}</span>

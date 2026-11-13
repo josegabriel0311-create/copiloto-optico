@@ -43,6 +43,15 @@ export default function CrearOptica() {
           </Button>
         </form>
       </Card>
+      <Card className="mt-4">
+        <p className="text-sm font-semibold">¿Trabajas en una óptica que ya usa Copiloto Óptico?</p>
+        <p className="mt-1 text-sm text-muted">
+          Pide al administrador que te invite con este correo: <span className="font-semibold text-ink">{user?.email}</span>. Después toca el botón para entrar.
+        </p>
+        <Button variant="outline" className="mt-3" onClick={recargarMembresia}>
+          Ya me invitaron
+        </Button>
+      </Card>
       <p className="mt-4 text-center text-xs text-muted">
         Sesión iniciada como {user?.email} ·{' '}
         <button onClick={salir} className="inline-flex items-center gap-1 font-semibold hover:text-ink">
